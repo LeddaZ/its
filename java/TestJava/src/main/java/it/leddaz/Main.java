@@ -60,7 +60,7 @@ public class Main {
             ps.setInt(1, aId);
             ResultSet rs = ps.executeQuery();
             while(rs.next()) {
-                if (!Objects.equals(rs.getString("Tipologia"), "SL")) {
+                if (Objects.equals(rs.getString("Tipologia"), "SL")) {
                     System.out.println("L'oggetto non è un semilavorato.");
                     return;
                 }
