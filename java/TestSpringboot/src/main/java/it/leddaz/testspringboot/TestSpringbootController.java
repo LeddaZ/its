@@ -37,7 +37,7 @@ public class TestSpringbootController {
    * @param request The request data
    */
   @PostMapping("/api/post/newOrder")
-  public static void newOrder(@RequestBody NewOrderRequest request) {
+  public static String newOrder(@RequestBody NewOrderRequest request) {
     try {
       logger.info("Connecting to SQL Server...");
       DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
@@ -47,10 +47,20 @@ public class TestSpringbootController {
       PreparedStatement ps = conn.prepareStatement(isSemifinished);
       ps.setInt(1, request.getItemId());
       ResultSet rs = ps.executeQuery();
+      if (rs.last()) {
+        if(rs.getRow() == 0) {
+          String msg = "The item does not exist.";
+          logger.error(msg);
+          return msg;
+        }
+        // Move to beginning
+        rs.beforeFirst();
+      }
       while (rs.next()) {
         if (!Objects.equals(rs.getString("Tipologia"), "SL")) {
-          logger.error("The item is not semifinished.");
-          return;
+          String msg = "The item is not semifinished.";
+          logger.error(msg);
+          return msg;
         }
       }
       String query =
@@ -61,11 +71,14 @@ public class TestSpringbootController {
               + ")";
       ps = conn.prepareStatement(query);
       ps.execute();
-      logger.info("Order added!");
+      String msg = "Order added!";
+      logger.info(msg);
       ps.close();
       conn.close();
+      return msg;
     } catch (SQLException e) {
       logger.error(e.getMessage());
+      return e.getMessage();
     }
   }
 
@@ -75,7 +88,7 @@ public class TestSpringbootController {
    * @param request The request data
    */
   @PostMapping("/api/post/calculateNeeds")
-  public static void calculateNeeds(@RequestBody CalculateNeedsRequest request) {
+  public static String calculateNeeds(@RequestBody CalculateNeedsRequest request) {
     try {
       logger.info("Connecting to SQL Server...");
       DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
@@ -90,6 +103,15 @@ public class TestSpringbootController {
       ps = conn.prepareStatement(itemQuantity);
       ps.setInt(1, request.getOrderId());
       ResultSet rs = ps.executeQuery();
+      if (rs.last()) {
+        if(rs.getRow() == 0) {
+          String msg = "The order does not exist.";
+          logger.error(msg);
+          return msg;
+        }
+        // Move to beginning
+        rs.beforeFirst();
+      }
       int itemId = 0;
       int quantity = 0;
       if (rs.next()) {
@@ -115,10 +137,14 @@ public class TestSpringbootController {
         ps.setInt(3, needsQuantity);
         ps.execute();
       }
-      logger.info("Needs calculated!");
+      String msg = "Needs calculated!";
+      logger.info(msg);
+      ps.close();
       conn.close();
+      return msg;
     } catch (SQLException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
+      return e.getMessage();
     }
   }
 }
