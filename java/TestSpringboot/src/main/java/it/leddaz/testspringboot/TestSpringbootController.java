@@ -1,12 +1,14 @@
 package it.leddaz.testspringboot;
 
+import it.leddaz.testspringboot.requests.ItemIdRequest;
+import it.leddaz.testspringboot.requests.NewOrderRequest;
+import it.leddaz.testspringboot.requests.OrderIdRequest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,10 +16,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-
-import it.leddaz.testspringboot.requests.ItemIdRequest;
-import it.leddaz.testspringboot.requests.NewOrderRequest;
-import it.leddaz.testspringboot.requests.OrderIdRequest;
 
 /**
  * Controller for the application.
@@ -59,8 +57,8 @@ public class TestSpringbootController {
       int rowCount = 0;
       while (rs.next()) {
         rowCount++;
-        if (!Objects.equals(rs.getString("Tipologia"), "SL")) {
-          String msg = "The item is not semifinished.";
+        if (Objects.equals(rs.getString("Tipologia"), "SL")) {
+          String msg = "The item is not a finished product.";
           logger.error(msg);
           return msg;
         }
@@ -184,9 +182,9 @@ public class TestSpringbootController {
         int itemId = Integer.parseInt(rs.getString("ArticoloID"));
         int quantity = rs.getInt("QuantitaFabbisogno");
         needs
-            .append("ID articolo: ")
+            .append("Item ID: ")
             .append(itemId)
-            .append(", Quantità necessaria: ")
+            .append(", Quantity: ")
             .append(quantity)
             .append("\n");
       }
@@ -321,6 +319,56 @@ public class TestSpringbootController {
       ps.close();
       rs.close();
       conn.close();
+      return msg;
+    } catch (SQLException e) {
+      logger.error(e.getMessage());
+      return e.getMessage();
+    }
+  }
+
+  @PatchMapping("/api/patch/updateSfPrice")
+  public static String updateSfPrice(@RequestBody OrderIdRequest request) {
+    try {
+      logger.info(CONNECTING);
+      DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
+      conn = DriverManager.getConnection(CONN_STRING);
+      logger.info(READY);
+
+      String parentItem = "SELECT ArticoloID FROM TOrdini WHERE OrdineID = ?";
+      PreparedStatement ps = conn.prepareStatement(parentItem);
+      ps.setInt(1, request.getOrderId());
+      ResultSet rs = ps.executeQuery();
+      int itemId = 0;
+      if (rs.next()) itemId = rs.getInt("ArticoloID");
+      else {
+        logger.error(ORDER_NOT_EXISTING);
+        return ORDER_NOT_EXISTING;
+      }
+
+      String itemPrice = "SELECT CostoUnitario FROM TArticoli WHERE ArticoloID = ?";
+      ps = conn.prepareStatement(itemPrice);
+      ps.setInt(1, itemId);
+      rs = ps.executeQuery();
+      rs.next();
+      double price = rs.getDouble("CostoUnitario");
+
+      String orderQuantitySql = "SELECT QuantitaDaProdurre FROM TOrdini WHERE OrdineID = ?";
+      ps = conn.prepareStatement(orderQuantitySql);
+      ps.setInt(1, request.getOrderId());
+      rs = ps.executeQuery();
+      rs.next();
+      int quantity = rs.getInt("QuantitaDaProdurre");
+
+      String updateSfPriceSql = "UPDATE TOrdini SET CostoSL = ? WHERE OrdineID = ?";
+      ps = conn.prepareStatement(updateSfPriceSql);
+      ps.setDouble(1, price * quantity);
+      ps.setInt(2, request.getOrderId());
+      ps.execute();
+      ps.close();
+      rs.close();
+      conn.close();
+      String msg = "Price updated!";
+      logger.info(msg);
       return msg;
     } catch (SQLException e) {
       logger.error(e.getMessage());
