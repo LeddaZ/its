@@ -1,20 +1,18 @@
 package it.leddaz.testspringboot;
 
+import it.leddaz.testspringboot.requests.NewOrderRequest;
+import it.leddaz.testspringboot.requests.OrderIdRequest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-
-import it.leddaz.testspringboot.requests.NewOrderRequest;
-import it.leddaz.testspringboot.requests.OrderIdRequest;
 
 /**
  * Controller for the application.
@@ -27,6 +25,9 @@ public class TestSpringbootController {
   private static final Logger logger = LoggerFactory.getLogger(TestSpringbootController.class);
   private static final String CONN_STRING =
       "jdbc:sqlserver://localhost:1433;databaseName=TestJava;user=sa;password=Password0+;encrypt=true;trustServerCertificate=true";
+  private static final String CONNECTING = "Connecting to SQL Server...";
+  private static final String READY = "Ready!";
+  private static final String ORDER_NOT_FOUND = "The order does not exist.";
   private static Connection conn;
 
   private TestSpringbootController() {
@@ -42,10 +43,10 @@ public class TestSpringbootController {
   @PostMapping("/api/post/newOrder")
   public static String newOrder(@RequestBody NewOrderRequest request) {
     try {
-      logger.info("Connecting to SQL Server...");
+      logger.info(CONNECTING);
       DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
       conn = DriverManager.getConnection(CONN_STRING);
-      logger.info("Ready!");
+      logger.info(READY);
       String isSemifinished = "SELECT * FROM TArticoli WHERE ArticoloID = ?";
       PreparedStatement ps = conn.prepareStatement(isSemifinished);
       ps.setInt(1, request.getItemId());
@@ -59,8 +60,8 @@ public class TestSpringbootController {
           return msg;
         }
       }
-      if(rowCount == 0) {
-        String msg = "The order does not exist.";
+      if (rowCount == 0) {
+        String msg = "The item does not exist.";
         logger.error(msg);
         return msg;
       }
@@ -92,10 +93,10 @@ public class TestSpringbootController {
   @PostMapping("/api/post/calculateNeeds")
   public static String calculateNeeds(@RequestBody OrderIdRequest request) {
     try {
-      logger.info("Connecting to SQL Server...");
+      logger.info(CONNECTING);
       DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
       conn = DriverManager.getConnection(CONN_STRING);
-      logger.info("Ready!");
+      logger.info(READY;
 
       String deleteExisting = "DELETE FROM TFabbisogni WHERE OrdineID = " + request.getOrderId();
       PreparedStatement ps = conn.prepareStatement(deleteExisting);
@@ -132,8 +133,8 @@ public class TestSpringbootController {
         ps.setInt(3, needsQuantity);
         ps.execute();
       }
-      if(rowCount == 0) {
-        String msg = "The order does not exist.";
+      if (rowCount == 0) {
+        String msg = ORDER_NOT_FOUND;
         logger.error(msg);
         return msg;
       }
@@ -157,10 +158,10 @@ public class TestSpringbootController {
   @PostMapping("/api/post/getNeeds")
   public static String getNeeds(@RequestBody OrderIdRequest request) {
     try {
-      logger.info("Connecting to SQL Server...");
+      logger.info(CONNECTING);
       DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
       conn = DriverManager.getConnection(CONN_STRING);
-      logger.info("Ready!");
+      logger.info(READY);
 
       // Execute a query to fetch the needs of the order
       String query = "SELECT ArticoloID, QuantitaFabbisogno FROM TFabbisogni WHERE OrdineID = ?";
@@ -182,8 +183,8 @@ public class TestSpringbootController {
             .append(quantity)
             .append("\n");
       }
-      if(rowCount == 0) {
-        String msg = "The order does not exist.";
+      if (rowCount == 0) {
+        String msg = ORDER_NOT_FOUND;
         logger.error(msg);
         return msg;
       }
