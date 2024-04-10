@@ -10,7 +10,7 @@
 		<relativePath />
 	</parent>
 	<groupId>it.leddaz</groupId>
-	<artifactId>testspringboot</artifactId>
+	<artifactId>TestSpringboot</artifactId>
 	<version>1.0-SNAPSHOT</version>
 	<name>testspringboot</name>
 	<description>Demo project for Spring Boot</description>
