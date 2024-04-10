@@ -1,13 +1,12 @@
 package it.leddaz.testspringboot;
 
-import it.leddaz.testspringboot.requests.NewOrderRequest;
-import it.leddaz.testspringboot.requests.OrderIdRequest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +14,10 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import it.leddaz.testspringboot.requests.ItemIdRequest;
+import it.leddaz.testspringboot.requests.NewOrderRequest;
+import it.leddaz.testspringboot.requests.OrderIdRequest;
 
 /**
  * Controller for the application.
@@ -122,10 +125,10 @@ public class TestSpringbootController {
         return ORDER_NOT_EXISTING;
       }
 
-      String legami =
+      String relationship =
           "SELECT ArticoloID_padre, CoefficienteFabbisogno FROM TLegami WHERE ArticoloID_figlio ="
               + " ?";
-      ps = conn.prepareStatement(legami);
+      ps = conn.prepareStatement(relationship);
       ps.setInt(1, itemId);
       rs = ps.executeQuery();
       while (rs.next()) {
@@ -255,6 +258,66 @@ public class TestSpringbootController {
         logger.error(msg3);
         return msg3;
       }
+      ps.close();
+      rs.close();
+      conn.close();
+      return msg;
+    } catch (SQLException e) {
+      logger.error(e.getMessage());
+      return e.getMessage();
+    }
+  }
+
+  @PatchMapping("/api/patch/updateFpPrice")
+  public static String updateFpPrice(@RequestBody ItemIdRequest request) {
+    try {
+      logger.info(CONNECTING);
+      DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
+      conn = DriverManager.getConnection(CONN_STRING);
+      logger.info(READY);
+
+      String isFinishedProduct = "SELECT * FROM TArticoli WHERE ArticoloID = ?";
+      PreparedStatement ps = conn.prepareStatement(isFinishedProduct);
+      ps.setInt(1, request.getItemId());
+      ResultSet rs = ps.executeQuery();
+      int rowCount = 0;
+      while (rs.next()) {
+        rowCount++;
+        if (!Objects.equals(rs.getString("Tipologia"), "PF")) {
+          String msg = "The item is not a finished product.";
+          logger.error(msg);
+          return msg;
+        }
+      }
+      if (rowCount == 0) {
+        String msg = "The item does not exist.";
+        logger.error(msg);
+        return msg;
+      }
+
+      String relationship = "SELECT ArticoloID_figlio FROM TLegami WHERE ArticoloID_padre = ?";
+      ps = conn.prepareStatement(relationship);
+      ps.setInt(1, request.getItemId());
+      rs = ps.executeQuery();
+      double price = 0;
+      while (rs.next()) {
+        int childItem = rs.getInt("ArticoloID_figlio");
+        String sfPrice = "SELECT CostoUnitario FROM TArticoli WHERE ArticoloID = ?";
+        ps = conn.prepareStatement(sfPrice);
+        ps.setInt(1, childItem);
+        ResultSet res = ps.executeQuery();
+        res.next();
+        price += res.getDouble("CostoUnitario");
+        res.close();
+      }
+
+      String updateFpPrice = "UPDATE TArticoli SET CostoUnitario = ? WHERE ArticoloID = ?";
+      ps = conn.prepareStatement(updateFpPrice);
+      ps.setDouble(1, price);
+      ps.setInt(2, request.getItemId());
+      ps.execute();
+      String msg = "Price updated!";
+      logger.info(msg);
       ps.close();
       rs.close();
       conn.close();
