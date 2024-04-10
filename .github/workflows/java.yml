@@ -21,6 +21,7 @@ jobs:
       - run: mvn -B package --file java/SQL/pom.xml
       - run: mvn -B package --file java/SusAmogus/pom.xml
       - run: mvn -B package --file java/TestJava/pom.xml
+      - run: mvn -B package --file java/TestSpringboot/pom.xml
 
       - uses: marvinpinto/action-automatic-releases@latest
         with:
