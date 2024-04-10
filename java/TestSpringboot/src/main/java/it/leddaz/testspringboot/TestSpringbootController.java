@@ -282,7 +282,7 @@ public class TestSpringbootController {
       int rowCount = 0;
       while (rs.next()) {
         rowCount++;
-        if (!Objects.equals(rs.getString("Tipologia"), "PF")) {
+        if (Objects.equals(rs.getString("Tipologia"), "SL")) {
           String msg = "The item is not a finished product.";
           logger.error(msg);
           return msg;
