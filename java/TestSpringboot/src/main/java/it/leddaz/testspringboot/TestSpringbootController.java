@@ -10,6 +10,8 @@ import java.sql.SQLException;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -76,6 +78,7 @@ public class TestSpringbootController {
       String msg = "Order added!";
       logger.info(msg);
       ps.close();
+      rs.close();
       conn.close();
       return msg;
     } catch (SQLException e) {
@@ -96,7 +99,7 @@ public class TestSpringbootController {
       logger.info(CONNECTING);
       DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
       conn = DriverManager.getConnection(CONN_STRING);
-      logger.info(READY;
+      logger.info(READY);
 
       String deleteExisting = "DELETE FROM TFabbisogni WHERE OrdineID = " + request.getOrderId();
       PreparedStatement ps = conn.prepareStatement(deleteExisting);
@@ -134,13 +137,13 @@ public class TestSpringbootController {
         ps.execute();
       }
       if (rowCount == 0) {
-        String msg = ORDER_NOT_FOUND;
-        logger.error(msg);
-        return msg;
+        logger.error(ORDER_NOT_FOUND);
+        return ORDER_NOT_FOUND;
       }
       String msg = "Needs calculated!";
       logger.info(msg);
       ps.close();
+      rs.close();
       conn.close();
       return msg;
     } catch (SQLException e) {
@@ -155,7 +158,7 @@ public class TestSpringbootController {
    * @param request The request data
    * @return The needs for the order.
    */
-  @PostMapping("/api/post/getNeeds")
+  @GetMapping("/api/get/getNeeds")
   public static String getNeeds(@RequestBody OrderIdRequest request) {
     try {
       logger.info(CONNECTING);
@@ -184,13 +187,77 @@ public class TestSpringbootController {
             .append("\n");
       }
       if (rowCount == 0) {
-        String msg = ORDER_NOT_FOUND;
-        logger.error(msg);
-        return msg;
+        logger.error(ORDER_NOT_FOUND);
+        return ORDER_NOT_FOUND;
       }
       ps.close();
+      rs.close();
       conn.close();
       return needs.toString();
+    } catch (SQLException e) {
+      logger.error(e.getMessage());
+      return e.getMessage();
+    }
+  }
+
+  /**
+   * Processes an order.
+   *
+   * @param request The request data
+   * @return The result of the operation.
+   */
+  @PatchMapping("/api/patch/processOrder")
+  public static String processOrder(@RequestBody OrderIdRequest request) {
+    String msg = "The order has been processed!";
+    try {
+      logger.info(CONNECTING);
+      DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
+      conn = DriverManager.getConnection(CONN_STRING);
+      logger.info(READY);
+
+      String checkOrder = "SELECT ScaricoEffettuato FROM TOrdini WHERE OrdineID = ?";
+      PreparedStatement ps = conn.prepareStatement(checkOrder);
+      ps.setInt(1, request.getOrderId());
+      ResultSet rs = ps.executeQuery();
+
+      if (rs.next() && rs.getBoolean("ScaricoEffettuato")) {
+        String msg2 = "The order has already been processed.";
+        logger.error(msg2);
+        return msg2;
+      }
+
+      String checkNeeds =
+          "SELECT ArticoloID, QuantitaFabbisogno FROM TFabbisogni WHERE OrdineID = ?";
+      ps = conn.prepareStatement(checkNeeds);
+      ps.setInt(1, request.getOrderId());
+      rs = ps.executeQuery();
+
+      int rowCount = 0;
+      while (rs.next()) {
+        rowCount++;
+        int itemId = Integer.parseInt(rs.getString("ArticoloID"));
+        int quantity = rs.getInt("QuantitaFabbisogno");
+        String decreaseQuantity =
+            "UPDATE TArticoli SET Giacenza = TArticoli.Giacenza - ? WHERE ArticoloID = ?";
+        ps = conn.prepareStatement(decreaseQuantity);
+        ps.setInt(1, quantity);
+        ps.setInt(2, itemId);
+        ps.executeUpdate();
+
+        String updateOrder = "UPDATE TOrdini SET ScaricoEffettuato = 1 WHERE OrdineID = ?";
+        ps = conn.prepareStatement(updateOrder);
+        ps.setInt(1, request.getOrderId());
+        ps.executeUpdate();
+        logger.info(msg);
+      }
+      if (rowCount == 0) {
+        logger.error(ORDER_NOT_FOUND);
+        return ORDER_NOT_FOUND;
+      }
+      ps.close();
+      rs.close();
+      conn.close();
+      return msg;
     } catch (SQLException e) {
       logger.error(e.getMessage());
       return e.getMessage();
