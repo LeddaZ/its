@@ -277,6 +277,12 @@ public class TestSpringbootController {
     }
   }
 
+  /**
+   * Updates the price of a finished product.
+   *
+   * @param request The request data
+   * @return The result of the operation.
+   */
   @PatchMapping("/api/patch/updateFpPrice")
   public static String updateFpPrice(@RequestBody ItemIdRequest request) {
     try {
@@ -337,6 +343,12 @@ public class TestSpringbootController {
     }
   }
 
+  /**
+   * Updates the price of a semifinished product.
+   *
+   * @param request The request data
+   * @return The result of the operation.
+   */
   @PatchMapping("/api/patch/updateSfPrice")
   public static String updateSfPrice(@RequestBody OrderIdRequest request) {
     try {
