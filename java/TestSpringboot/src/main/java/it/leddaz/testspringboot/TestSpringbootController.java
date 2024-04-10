@@ -1,5 +1,6 @@
 package it.leddaz.testspringboot;
 
+import it.leddaz.testspringboot.requests.CalculateNeedsRequest;
 import it.leddaz.testspringboot.requests.NewOrderRequest;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -22,9 +23,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class TestSpringbootController {
 
   private static final Logger logger = LoggerFactory.getLogger(TestSpringbootController.class);
-  private static final String connStr =
+  private static final String CONN_STRING =
       "jdbc:sqlserver://localhost:1433;databaseName=TestJava;user=sa;password=Password0+;encrypt=true;trustServerCertificate=true";
   private static Connection conn;
+
+  private TestSpringbootController() {
+    // Private constructor to hide the implicit public one
+  }
 
   /**
    * Handles new order requests.
@@ -32,11 +37,11 @@ public class TestSpringbootController {
    * @param request The request data
    */
   @PostMapping("/api/post/newOrder")
-  public void newOrder(@RequestBody NewOrderRequest request) {
+  public static void newOrder(@RequestBody NewOrderRequest request) {
     try {
       logger.info("Connecting to SQL Server...");
       DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
-      conn = DriverManager.getConnection(connStr);
+      conn = DriverManager.getConnection(CONN_STRING);
       logger.info("Ready!");
       String isSemifinished = "SELECT * FROM TArticoli WHERE ArticoloID = ?";
       PreparedStatement ps = conn.prepareStatement(isSemifinished);
@@ -61,6 +66,59 @@ public class TestSpringbootController {
       conn.close();
     } catch (SQLException e) {
       logger.error(e.getMessage());
+    }
+  }
+
+  /**
+   * Calculates the needs for an order.
+   *
+   * @param request The request data
+   */
+  @PostMapping("/api/post/calculateNeeds")
+  public static void calculateNeeds(@RequestBody CalculateNeedsRequest request) {
+    try {
+      logger.info("Connecting to SQL Server...");
+      DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
+      conn = DriverManager.getConnection(CONN_STRING);
+      logger.info("Ready!");
+
+      String deleteExisting = "DELETE FROM TFabbisogni WHERE OrdineID = " + request.getOrderId();
+      PreparedStatement ps = conn.prepareStatement(deleteExisting);
+      ps.execute();
+
+      String itemQuantity = "SELECT ArticoloID, QuantitaDaProdurre FROM TOrdini WHERE OrdineID = ?";
+      ps = conn.prepareStatement(itemQuantity);
+      ps.setInt(1, request.getOrderId());
+      ResultSet rs = ps.executeQuery();
+      int itemId = 0;
+      int quantity = 0;
+      if (rs.next()) {
+        itemId = rs.getInt("ArticoloID");
+        quantity = rs.getInt("QuantitaDaProdurre");
+      }
+
+      String legami =
+          "SELECT ArticoloID_figlio, CoefficienteFabbisogno FROM TLegami WHERE ArticoloID_padre ="
+              + " ?";
+      ps = conn.prepareStatement(legami);
+      ps.setInt(1, itemId);
+      rs = ps.executeQuery();
+      while (rs.next()) {
+        int childItem = rs.getInt("ArticoloID_figlio");
+        int needsCoefficient = rs.getInt("CoefficienteFabbisogno");
+        int needsQuantity = needsCoefficient * quantity;
+        String insertNeeds =
+            "INSERT INTO TFabbisogni (OrdineID, ArticoloID, QuantitaFabbisogno) VALUES (?,?,?)";
+        ps = conn.prepareStatement(insertNeeds);
+        ps.setInt(1, request.getOrderId());
+        ps.setInt(2, childItem);
+        ps.setInt(3, needsQuantity);
+        ps.execute();
+      }
+      logger.info("Needs calculated!");
+      conn.close();
+    } catch (SQLException e) {
+      e.printStackTrace();
     }
   }
 }
