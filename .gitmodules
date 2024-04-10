@@ -7,6 +7,3 @@
 [submodule "node/angular-cart"]
   path = node/angular-cart
   url = https://github.com/LeddaZ/angular-cart
-[submodule "java/TestSpringboot"]
-	path = java/TestSpringboot
-	url = https://github.com/LeddaZ/TestSpringboot
