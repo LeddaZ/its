@@ -1,5 +1,8 @@
 package it.leddaz.testspringboot;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import it.leddaz.testspringboot.requests.ItemIdRequest;
 import it.leddaz.testspringboot.requests.NewOrderRequest;
 import it.leddaz.testspringboot.requests.OrderIdRequest;
@@ -125,14 +128,14 @@ public class TestSpringbootController {
       }
 
       String relationship =
-          "SELECT ArticoloID_padre, CoefficienteFabbisogno FROM TLegami WHERE ArticoloID_figlio ="
+          "SELECT ArticoloID_figlio, CoefficienteFabbisogno FROM TLegami WHERE ArticoloID_padre ="
               + " ?";
       ps = conn.prepareStatement(relationship);
       ps.setInt(1, itemId);
       rs = ps.executeQuery();
       while (rs.next()) {
         rowCount++;
-        int parentItem = rs.getInt("ArticoloID_padre");
+        int parentItem = rs.getInt("ArticoloID_figlio");
         int needsCoefficient = rs.getInt("CoefficienteFabbisogno");
         int needsQuantity = needsCoefficient * quantity;
         String insertNeeds =
@@ -162,7 +165,7 @@ public class TestSpringbootController {
    * @return The needs for the order.
    */
   @GetMapping("/api/get/getNeeds")
-  public static String getNeeds(@RequestBody OrderIdRequest request) {
+  public static ArrayNode getNeeds(@RequestBody OrderIdRequest request) {
     try {
       logger.info(CONNECTING);
       DriverManager.registerDriver(new com.microsoft.sqlserver.jdbc.SQLServerDriver());
@@ -176,30 +179,37 @@ public class TestSpringbootController {
       ResultSet rs = ps.executeQuery();
 
       // Display the needs of the order
-      StringBuilder needs = new StringBuilder();
       int rowCount = 0;
+      ObjectMapper mapper = new ObjectMapper();
+      ArrayNode jsonArray = mapper.createArrayNode();
       while (rs.next()) {
         rowCount++;
         int itemId = Integer.parseInt(rs.getString(ITEM_ID_COL));
         int quantity = rs.getInt("QuantitaFabbisogno");
-        needs
-            .append("Item ID: ")
-            .append(itemId)
-            .append(", Quantity: ")
-            .append(quantity)
-            .append("\n");
+        ObjectNode jo = mapper.createObjectNode();
+        jo.put("itemId", itemId);
+        jo.put("quantity", quantity);
+        jsonArray.add(jo);
       }
       if (rowCount == 0) {
         logger.error(ORDER_NOT_EXISTING);
-        return ORDER_NOT_EXISTING;
+        ObjectNode jErr = mapper.createObjectNode();
+        jErr.put("error", ORDER_NOT_EXISTING);
+        jsonArray.add(jErr);
+        return jsonArray;
       }
       ps.close();
       rs.close();
       conn.close();
-      return needs.toString();
+      return jsonArray;
     } catch (SQLException e) {
       logger.error(e.getMessage());
-      return e.getMessage();
+      ObjectMapper mapper = new ObjectMapper();
+      ArrayNode jsonArray = mapper.createArrayNode();
+      ObjectNode jErr = mapper.createObjectNode();
+      jErr.put("error", e.getMessage());
+      jsonArray.add(jErr);
+      return jsonArray;
     }
   }
 
