@@ -31,6 +31,7 @@ public class TestSpringbootController {
   private static final String CONNECTING = "Connecting to SQL Server...";
   private static final String READY = "Ready!";
   private static final String ORDER_NOT_EXISTING = "The order does not exist.";
+  private static final String ITEM_ID_COL = "ArticoloID";
   private static Connection conn;
 
   private TestSpringbootController() {
@@ -115,7 +116,7 @@ public class TestSpringbootController {
       int rowCount = 0;
       if (rs.next()) {
         rowCount++;
-        itemId = rs.getInt("ArticoloID");
+        itemId = rs.getInt(ITEM_ID_COL);
         quantity = rs.getInt("QuantitaDaProdurre");
       }
       if (rowCount == 0) {
@@ -179,7 +180,7 @@ public class TestSpringbootController {
       int rowCount = 0;
       while (rs.next()) {
         rowCount++;
-        int itemId = Integer.parseInt(rs.getString("ArticoloID"));
+        int itemId = Integer.parseInt(rs.getString(ITEM_ID_COL));
         int quantity = rs.getInt("QuantitaFabbisogno");
         needs
             .append("Item ID: ")
@@ -236,7 +237,7 @@ public class TestSpringbootController {
       int rowCount = 0;
       while (rs.next()) {
         rowCount++;
-        int itemId = Integer.parseInt(rs.getString("ArticoloID"));
+        int itemId = Integer.parseInt(rs.getString(ITEM_ID_COL));
         int quantity = rs.getInt("QuantitaFabbisogno");
         String decreaseQuantity =
             "UPDATE TArticoli SET Giacenza = TArticoli.Giacenza - ? WHERE ArticoloID = ?";
@@ -339,7 +340,7 @@ public class TestSpringbootController {
       ps.setInt(1, request.getOrderId());
       ResultSet rs = ps.executeQuery();
       int itemId = 0;
-      if (rs.next()) itemId = rs.getInt("ArticoloID");
+      if (rs.next()) itemId = rs.getInt(ITEM_ID_COL);
       else {
         logger.error(ORDER_NOT_EXISTING);
         return ORDER_NOT_EXISTING;
