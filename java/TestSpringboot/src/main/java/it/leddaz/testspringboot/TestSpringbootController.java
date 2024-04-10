@@ -29,7 +29,7 @@ public class TestSpringbootController {
       "jdbc:sqlserver://localhost:1433;databaseName=TestJava;user=sa;password=Password0+;encrypt=true;trustServerCertificate=true";
   private static final String CONNECTING = "Connecting to SQL Server...";
   private static final String READY = "Ready!";
-  private static final String ORDER_NOT_FOUND = "The order does not exist.";
+  private static final String ORDER_NOT_EXISTING = "The order does not exist.";
   private static Connection conn;
 
   private TestSpringbootController() {
@@ -111,34 +111,35 @@ public class TestSpringbootController {
       ResultSet rs = ps.executeQuery();
       int itemId = 0;
       int quantity = 0;
+      int rowCount = 0;
       if (rs.next()) {
+        rowCount++;
         itemId = rs.getInt("ArticoloID");
         quantity = rs.getInt("QuantitaDaProdurre");
       }
+      if (rowCount == 0) {
+        logger.error(ORDER_NOT_EXISTING);
+        return ORDER_NOT_EXISTING;
+      }
 
       String legami =
-          "SELECT ArticoloID_figlio, CoefficienteFabbisogno FROM TLegami WHERE ArticoloID_padre ="
+          "SELECT ArticoloID_padre, CoefficienteFabbisogno FROM TLegami WHERE ArticoloID_figlio ="
               + " ?";
       ps = conn.prepareStatement(legami);
       ps.setInt(1, itemId);
       rs = ps.executeQuery();
-      int rowCount = 0;
       while (rs.next()) {
         rowCount++;
-        int childItem = rs.getInt("ArticoloID_figlio");
+        int parentItem = rs.getInt("ArticoloID_padre");
         int needsCoefficient = rs.getInt("CoefficienteFabbisogno");
         int needsQuantity = needsCoefficient * quantity;
         String insertNeeds =
             "INSERT INTO TFabbisogni (OrdineID, ArticoloID, QuantitaFabbisogno) VALUES (?,?,?)";
         ps = conn.prepareStatement(insertNeeds);
         ps.setInt(1, request.getOrderId());
-        ps.setInt(2, childItem);
+        ps.setInt(2, parentItem);
         ps.setInt(3, needsQuantity);
         ps.execute();
-      }
-      if (rowCount == 0) {
-        logger.error(ORDER_NOT_FOUND);
-        return ORDER_NOT_FOUND;
       }
       String msg = "Needs calculated!";
       logger.info(msg);
@@ -187,8 +188,8 @@ public class TestSpringbootController {
             .append("\n");
       }
       if (rowCount == 0) {
-        logger.error(ORDER_NOT_FOUND);
-        return ORDER_NOT_FOUND;
+        logger.error(ORDER_NOT_EXISTING);
+        return ORDER_NOT_EXISTING;
       }
       ps.close();
       rs.close();
@@ -231,7 +232,6 @@ public class TestSpringbootController {
       ps = conn.prepareStatement(checkNeeds);
       ps.setInt(1, request.getOrderId());
       rs = ps.executeQuery();
-
       int rowCount = 0;
       while (rs.next()) {
         rowCount++;
@@ -251,8 +251,9 @@ public class TestSpringbootController {
         logger.info(msg);
       }
       if (rowCount == 0) {
-        logger.error(ORDER_NOT_FOUND);
-        return ORDER_NOT_FOUND;
+        String msg3 = "Order not found.";
+        logger.error(msg3);
+        return msg3;
       }
       ps.close();
       rs.close();
