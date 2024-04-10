@@ -1,6 +1,6 @@
 package it.leddaz.testspringboot.requests;
 
-public class CalculateNeedsRequest {
+public class OrderIdRequest {
 
   private int orderId;
 
