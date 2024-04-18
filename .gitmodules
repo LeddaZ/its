@@ -7,3 +7,6 @@
 [submodule "node/angular-cart"]
   path = node/angular-cart
   url = https://github.com/LeddaZ/angular-cart
+[submodule "node/todo/backend"]
+	path = node/todo/backend
+	url = https://github.com/LeddaZ/todo-backend
